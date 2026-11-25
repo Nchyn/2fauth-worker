@@ -8,7 +8,7 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { execSync } from 'child_process'
 import wasm from 'vite-plugin-wasm'
-import topLevelAwait from 'vite-plugin-top-level-await'
+// 已移除 topLevelAwait 导入
 
 let commitHash = ''
 try {
@@ -21,7 +21,7 @@ export default defineConfig({
   plugins: [
     vue(),
     wasm(),
-    topLevelAwait(),
+    // 已移除 topLevelAwait()
     AutoImport({
       imports: ['vue', 'vue-router'],
       resolvers: [ElementPlusResolver({ importStyle: false })],
@@ -151,6 +151,7 @@ export default defineConfig({
     }
   },
   build: {
+    target: 'esnext', // 【新增】允许原生顶层 await
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
