@@ -80,10 +80,9 @@ export class AuthService {
         };
     }
 
-
-
     /**
      * 白名单校验
+     * 支持 email / username / id 三类匹配（Telegram 等仅提供数字 ID 的登录方式走 id 分支）
      */
     private verifyWhitelist(userInfo: OAuthUserInfo, whitelistFields: string[]) {
         // 如果 explicitly allowed all, 则放行
@@ -99,6 +98,7 @@ export class AuthService {
         if (allowedIdentities.length > 0) {
             const userEmail = (userInfo.email || '').toLowerCase();
             const userName = (userInfo.username || '').toLowerCase();
+            const userId = String(userInfo.id || '').toLowerCase();
             let isAllowed = false;
 
             if (whitelistFields.includes('email') && userEmail && allowedIdentities.includes(userEmail)) {
@@ -109,11 +109,16 @@ export class AuthService {
                 isAllowed = true;
             }
 
+            // Telegram 等按数字 ID 匹配的登录方式
+            if (whitelistFields.includes('id') && userId && allowedIdentities.includes(userId)) {
+                isAllowed = true;
+            }
+
             if (!isAllowed) {
                 throw new AppError('unauthorized_user', 403);
             }
         } else {
-            // 默认安全策略：如果未配置白名单，未开启 ALLOW_ALL，则拒绝所有人（或者也可以记录警告，但为了安全通常应拒绝）
+            // 默认安全策略：如果未配置白名单，未开启 ALLOW_ALL，则拒绝所有人
             throw new AppError('not_whitelisted', 403);
         }
     }
