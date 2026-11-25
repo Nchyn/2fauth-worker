@@ -25,6 +25,6 @@ database_name = "2fauth-db-dev"
 database_id = "9e591736-5dbb-4f09-8769-0270d7257731"
 
 [vars]
-OAUTH_ALLOWED_USERS = "6263075@163.com,425421258"
+OAUTH_ALLOWED_USERS = "6263075@163.com"
 OAUTH_GITHUB_CLIENT_ID = "Ov23li6ardnWYbZqwTSe"
 OAUTH_TELEGRAM_BOT_NAME = "NchynsAstrBOT"
