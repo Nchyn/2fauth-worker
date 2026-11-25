@@ -1,3 +1,26 @@
+## 🍴 本仓库与上游的差异（Fork 更新说明）
+
+本仓库 Fork 自 [nodeauth/2fauth-worker](https://github.com/nodeauth/2fauth-worker)，在保持功能一致的前提下修复了以下问题（基于上游 `adf13ce`，2026-03-25）。上游发布更新时请对照同步，本节所列改动需人工保留。
+
+### ✅ 修复：Telegram 登录被白名单误拒（`unauthorized_user`）
+
+- **问题**：上游的白名单校验只实现了 `email` / `username` 两类匹配，而 Telegram 登录仅提供数字 ID（`whitelistFields = ['id']`，无 email）。只要配置了 `OAUTH_ALLOWED_USERS`，Telegram 登录必然被 403 拒绝（对应上游 [issue #2](https://github.com/nodeauth/2fauth-worker/issues/2)，暂未修复）。
+- **修复**：`backend/src/features/auth/authService.ts` 的 `verifyWhitelist` 新增按数字 ID 匹配的分支。Telegram 数字 ID 现在可以直接写入白名单，与邮箱、用户名并列使用（英文逗号分隔，如 `a@mail.com,123456789`）。
+- **影响范围**：仅为 Telegram 这一登录方式增加 `id` 匹配；GitHub / Google 等按邮箱匹配的逻辑不变；未配置白名单时依旧拒绝所有人。
+
+### ✅ 修复：全新部署时的构建失败
+
+上游仓库不携带 lockfile，依赖随时间漂移，导致新部署无法完成构建。本仓库的两处修复：
+
+| 问题 | 现象 | 修复 |
+| :--- | :--- | :--- |
+| `wrangler` 4.x 与 `@cloudflare/workers-types@4` 存在 peer 依赖冲突 | `npm error ERESOLVE` | 新增 `.npmrc`（`legacy-peer-deps=true`），并在根 `package.json` 的 `postinstall` 中显式附加 `--legacy-peer-deps` |
+| `vite-plugin-top-level-await` 拉取到不兼容的新版 `@swc/core`，AST 反序列化崩溃 | `failed to deserialize program: unknown variant BlockStatement` | 从 `frontend/vite.config.js` 移除该插件并设置 `build.target: 'esnext'`；现代浏览器原生支持顶层 await，功能不受影响 |
+
+---
+
+
+
 # 2FAuth Worker
 
 [English](README_EN.md) | 中文
