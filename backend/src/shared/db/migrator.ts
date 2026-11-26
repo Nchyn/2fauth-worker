@@ -49,6 +49,25 @@ const MIGRATIONS: Migration[] = [
             CREATE INDEX IF NOT EXISTS idx_passkeys_user_id ON auth_passkeys(user_id);
             CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at);
         `
+    },
+    {
+        version: 5,
+        name: 'create_ext_tokens',
+        sql: `
+            CREATE TABLE IF NOT EXISTS ext_tokens (
+                id TEXT PRIMARY KEY,
+                token_hash TEXT NOT NULL UNIQUE,
+                user_id TEXT NOT NULL,
+                label TEXT,
+                created_at INTEGER NOT NULL,
+                last_used_at INTEGER,
+                last_renewed_at INTEGER,
+                expires_at INTEGER NOT NULL,
+                revoked_at INTEGER
+            );
+            CREATE INDEX IF NOT EXISTS idx_ext_tokens_hash ON ext_tokens(token_hash);
+            CREATE INDEX IF NOT EXISTS idx_ext_tokens_user ON ext_tokens(user_id);
+        `
     }
 ];
 

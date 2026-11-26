@@ -69,12 +69,22 @@ const SecuritySettings = createAsyncComponent(() => import('@/features/auth/view
 const sessionKey = 'activeTab'
 const activeTab    = ref(sessionStorage.getItem(sessionKey) || 'vault')
 
+const validTabs = ['vault', 'add-vault-scan', 'add-vault-manual', 'migration-export', 'migration-import', 'backups', 'tools', 'security']
+
+// 支持 ?tab=security 深链（浏览器扩展授权入口使用）
+const applyTabFromQuery = () => {
+  const requested = new URLSearchParams(window.location.search).get('tab')
+  if (requested && validTabs.includes(requested)) {
+    activeTab.value = requested
+  }
+}
+
 onMounted(() => {
   // 强制校准：如果状态非法，回归默认视图
-  const validTabs = ['vault', 'add-vault-scan', 'add-vault-manual', 'migration-export', 'migration-import', 'backups', 'tools', 'security']
   if (!validTabs.includes(activeTab.value)) {
     activeTab.value = 'vault'
   }
+  applyTabFromQuery()
 })
 
 watch(activeTab, (newVal) => {

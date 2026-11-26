@@ -9,6 +9,11 @@ export const SECURITY_CONFIG = {
     MAX_OAUTH_ATTEMPTS: 3,
     OAUTH_LOCKOUT_TIME: 10 * 60 * 1000,
     MAX_FILE_SIZE: 10 * 1024 * 1024,
+    // 浏览器扩展设备令牌
+    EXT_TOKEN_TTL_DAYS: 30,                    // 滑动续期窗口
+    EXT_TOKEN_RENEW_INTERVAL: 60 * 60 * 1000,  // 最少 1 小时写一次续期，避免每 30 秒打库
+    EXT_TOKEN_MAX_PER_USER: 10,                // 每个用户最多保留的有效令牌数
+    EXT_CODES_RATE_MAX: 120,                   // 每个令牌每分钟最多取码次数
 };
 
 // ==========================================

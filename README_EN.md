@@ -281,6 +281,34 @@ Regardless of the deployment method, these parameters are critical:
 <img height="400" src="https://github.com/user-attachments/assets/c6101ee8-f3c3-44f6-9286-f17865f8fb10" />
 </details>
 
+## 🧩 Browser Extension
+
+An official browser extension (Chrome / Edge / Firefox 121+) ships in this repo at [`extension/`](extension/). Plain JavaScript, no build step.
+
+**Install**
+
+1. Open `chrome://extensions` (or `edge://extensions`) and enable Developer mode
+2. Click "Load unpacked" and select the `extension/` folder
+3. Enter your site URL (e.g. `https://2fa.example.com`) in the popup
+
+**Authorize a device token (recommended)**
+
+1. Click "Authorize" in the popup — it opens your site's Security → Browser Extension Access page
+2. Click "Authorize Device", then "Send to Extension" to complete setup automatically
+3. On first binding the extension asks you to **verify the site domain once** in its popup (an anti-poisoning safeguard) before it takes effect
+4. Codes are then fetched **without any site tab**, and the token slides forward 30 days on each successful lookup
+
+**Two modes**
+
+| Mode | Needs a site tab? | Validity | When to use |
+| :--- | :--- | :--- | :--- |
+| Device token | ❌ No | 30-day sliding | Daily use, recommended |
+| Site session | ✅ Yes (temporary tab opened) | Site cookie, 7 days | No extra authorization, or a temporary device |
+
+In both modes the extension only ever receives codes — no secrets are stored locally, and `/api/ext/codes` never returns secrets. Tokens can be revoked at any time from the same settings page, effective immediately.
+
+---
+
 ## 🔓 Offline Recovery
 
 Even if this project stops running, you can still recover your TOTP raw data using your backup file and encryption password. We provide a standalone offline decryption script that does not depend on any external servers:

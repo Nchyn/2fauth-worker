@@ -72,6 +72,23 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     expires_at INTEGER           -- 锁定过期时间 (如果有)
 );
 
+-- 浏览器扩展设备令牌表
+-- 仅存储令牌的 SHA-256 摘要，明文只在签发时返回一次
+CREATE TABLE IF NOT EXISTS ext_tokens (
+    id TEXT PRIMARY KEY,
+    token_hash TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL,                  -- 关联用户标识 (Email)
+    label TEXT,                             -- 设备别名
+    created_at INTEGER NOT NULL,
+    last_used_at INTEGER,
+    last_renewed_at INTEGER,
+    expires_at INTEGER NOT NULL,            -- 滑动续期后的到期时间戳
+    revoked_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_ext_tokens_hash ON ext_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_ext_tokens_user ON ext_tokens(user_id);
+
 -- 数据库版本初始化 (元数据表方案)
 CREATE TABLE IF NOT EXISTS _schema_metadata (
     key TEXT PRIMARY KEY,

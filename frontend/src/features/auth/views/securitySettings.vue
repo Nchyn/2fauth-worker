@@ -111,6 +111,9 @@
           </template>
         </el-dialog>
       </div>
+
+      <!-- 浏览器扩展设备令牌 -->
+      <ExtTokenSettings />
     </div>
   </div>
 </template>
@@ -122,6 +125,7 @@ import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { webAuthnService } from '@/features/auth/service/webAuthnService'
+import ExtTokenSettings from '@/features/auth/components/extTokenSettings.vue'
 
 const layoutStore = useLayoutStore()
 

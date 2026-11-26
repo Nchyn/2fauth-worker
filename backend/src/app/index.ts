@@ -10,6 +10,7 @@ import vaultRoutes from '@/features/vault/vaultRoutes';
 import backupRoutes from '@/features/backup/backupRoutes';
 import telegramRoutes from '@/features/telegram/telegramRoutes';
 import toolsRoutes from '@/features/tools/toolsRoutes';
+import extRoutes from '@/features/ext/extRoutes';
 import healthRoutes from '@/features/health/healthRoutes';
 import emergencyRoutes from '@/features/emergency/emergencyRoutes';
 import { runHealthCheck } from '@/shared/utils/health';
@@ -93,6 +94,7 @@ app.route('/api/vault', vaultRoutes); // 'accounts' is now 'vault'
 app.route('/api/backups', backupRoutes);
 app.route('/api/telegram', telegramRoutes);
 app.route('/api/tools', toolsRoutes);
+app.route('/api/ext', extRoutes);
 
 // 5. API 404 处理 (必须在静态资源 fallback 之前，确保 API 路径返回 JSON)
 app.all('/api/*', (c) => {

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2FAuth Worker 验证码</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- 首次绑定确认：站点页面发来的令牌，需用户在此确认域名后才生效 -->
+    <section id="bind-confirm-view" class="view bind-confirm" hidden>
+      <div class="brand">
+        <img src="icons/icon48.png" alt="" width="44" height="44" class="brand-icon">
+        <div>
+          <h1>确认站点授权</h1>
+          <p class="brand-sub">站点页面请求把扩展绑定到以下地址</p>
+        </div>
+      </div>
+
+      <div class="bind-host-box">
+        <span class="bind-label">站点</span>
+        <code id="bind-host-text" class="bind-host-text"></code>
+      </div>
+
+      <p class="hint">
+        请核对域名是否是你的 2fauth-worker 站点。<br>
+        确认后扩展将保存该站点与设备令牌（30 天内滑动有效）。
+      </p>
+
+      <button id="bind-confirm-btn" type="button" class="primary full">确认使用</button>
+      <button id="bind-reject-btn" type="button" class="ghost full">拒绝</button>
+    </section>
+
+    <!-- 连接设置 -->
+    <section id="setup-view" class="view setup">
+      <div class="brand">
+        <img src="icons/icon48.png" alt="" width="44" height="44" class="brand-icon">
+        <div>
+          <h1>2FAuth Worker</h1>
+          <p class="brand-sub">连接你的站点，随时查看验证码</p>
+        </div>
+      </div>
+
+      <form id="setup-form" autocomplete="off" novalidate>
+        <label class="field">
+          <span class="label-text">站点地址</span>
+          <input id="host-input" type="url" inputmode="url" spellcheck="false"
+                 placeholder="https://2fa.example.com">
+        </label>
+
+        <label class="field">
+          <span class="label-text">设备令牌 <span class="label-optional">可选 · 推荐</span></span>
+          <textarea id="token-input" rows="2" spellcheck="false"
+                    placeholder="fw_... 在站点「安全设置 → 浏览器扩展授权」生成"></textarea>
+        </label>
+
+        <p id="token-state" class="token-state" hidden></p>
+
+        <p class="hint">
+          填写设备令牌后，扩展直接向站点取码：<b>不需要打开站点标签页</b>，令牌 30 天内滑动有效。<br>
+          留空则回退到「复用站点登录会话」模式，需要站点保持登录。<br>
+          两种模式都不会保存账户密钥。
+        </p>
+
+        <p id="setup-error" class="error" hidden></p>
+
+        <button id="open-login-btn" type="button" class="ghost full" hidden>打开站点登录</button>
+        <button id="authorize-btn" type="button" class="ghost full" hidden>去站点授权</button>
+
+        <button id="connect-btn" type="submit" class="primary">
+          <span class="btn-label">连接</span>
+          <span class="spinner small" hidden></span>
+        </button>
+      </form>
+
+      <div class="setup-footer">
+        <button id="cancel-btn" type="button" class="link" hidden>返回验证码</button>
+        <button id="disconnect-btn" type="button" class="link danger" hidden>清除配置</button>
+      </div>
+
+      <p class="version-note">设备令牌优先 · 不缓存账户密钥 · 仅支持 TOTP</p>
+    </section>
+
+    <!-- 验证码列表 -->
+    <section id="accounts-view" class="view accounts" hidden>
+      <header class="topbar">
+        <div class="site">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div class="site-text">
+            <div id="header-host" class="host">站点</div>
+            <div class="user-line">
+              <span id="mode-badge" class="mode-badge" hidden></span>
+              <span id="header-user" class="user">站点会话</span>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="refresh-btn" type="button" class="icon" title="刷新" aria-label="刷新">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v6h-6" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button id="settings-btn" type="button" class="icon" title="设置" aria-label="设置">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.12.36.5.6.9.6H21a2 2 0 1 1 0 4h-.09c-.4 0-.78.24-.9.6Z"
+                    fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div id="error-banner" class="banner" hidden>
+        <span id="error-text"></span>
+        <button id="retry-btn" type="button" class="ghost small">重试</button>
+      </div>
+
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input id="search-input" type="search" placeholder="搜索服务或账户" spellcheck="false">
+        <button id="clear-search" type="button" class="clear" title="清除" hidden>&times;</button>
+      </div>
+
+      <div id="groups" class="groups" hidden></div>
+
+      <div id="site-hint" class="site-hint" hidden></div>
+
+      <div id="list-loading" class="loading">
+        <span class="spinner"></span>
+        <span>正在通过站点读取验证码…</span>
+      </div>
+
+      <div id="account-list" class="account-list" hidden></div>
+
+      <div id="empty-state" class="empty" hidden>
+        <div class="empty-icon" aria-hidden="true">🔐</div>
+        <p id="empty-title">还没有账户</p>
+        <p id="empty-desc" class="muted">请先在网页版添加 TOTP 账户</p>
+      </div>
+
+      <footer class="footer">
+        <span id="footer-count" class="muted"></span>
+        <button id="open-web-btn" type="button" class="link">打开网页版</button>
+      </footer>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+
+  <script src="shared.js" defer></script>
+  <script src="popup.js" defer></script>
+</body>
+</html>

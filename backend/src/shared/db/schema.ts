@@ -81,6 +81,19 @@ export const schemaMetadata = sqliteTable('_schema_metadata', {
   value: text('value'),
 });
 
+// 7. 浏览器扩展设备令牌表 (Extension Tokens)
+export const extTokens = sqliteTable('ext_tokens', {
+  id: text('id').primaryKey(),              // UUID
+  tokenHash: text('token_hash').notNull(),  // SHA-256(token)，明文不落库
+  userId: text('user_id').notNull(),        // 关联用户标识 (Email)
+  label: text('label'),                     // 设备别名
+  createdAt: integer('created_at').notNull(),
+  lastUsedAt: integer('last_used_at'),
+  lastRenewedAt: integer('last_renewed_at'),
+  expiresAt: integer('expires_at').notNull(),
+  revokedAt: integer('revoked_at'),
+});
+
 // 导出类型定义
 export type VaultItem = typeof vault.$inferSelect;
 export type NewVaultItem = typeof vault.$inferInsert;
@@ -94,3 +107,5 @@ export type RateLimit = typeof rateLimits.$inferSelect;
 export type NewRateLimit = typeof rateLimits.$inferInsert;
 export type SchemaMetadata = typeof schemaMetadata.$inferSelect;
 export type NewSchemaMetadata = typeof schemaMetadata.$inferInsert;
+export type ExtToken = typeof extTokens.$inferSelect;
+export type NewExtToken = typeof extTokens.$inferInsert;
