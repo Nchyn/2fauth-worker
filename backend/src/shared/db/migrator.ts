@@ -91,8 +91,17 @@ export async function migrateDatabase(db: DbExecutor) {
     for (const m of pending) {
         console.log(`[Database] Applying v${m.version}: ${m.name}`);
         try {
-            // 注意：SQLite 的 ALTER TABLE 不支持 IF NOT EXISTS，需捕获错误以防重复执行
-            await db.exec(m.sql);
+            // 注意：SQLite 的 ALTER TABLE 不支持 IF NOT EXISTS，需捕获错误以防重复执行。
+            // D1 的 exec() 走批量协议，对多语句支持有限；逐条执行保证每条 DDL 独立成功。
+            for (const statement of splitStatements(m.sql)) {
+                if (!statement) continue;
+                try {
+                    await db.exec(statement);
+                } catch (e: any) {
+                    if (e.message?.includes('duplicate column name') || e.message?.includes('already exists')) continue;
+                    throw e;
+                }
+            }
             await db.prepare("INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES ('version', ?)").run(m.version.toString());
         } catch (e: any) {
             if (e.message?.includes('duplicate column name') || e.message?.includes('already exists')) {
@@ -103,4 +112,15 @@ export async function migrateDatabase(db: DbExecutor) {
             throw e;
         }
     }
+}
+
+/**
+ * 把多语句 SQL 按分号拆成单条（忽略字符串字面量里的分号——本项目的迁移没有这种字面量，
+ * 简单 split 即可覆盖现有全部条目）。
+ */
+function splitStatements(sql: string): string[] {
+    return sql
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean);
 }

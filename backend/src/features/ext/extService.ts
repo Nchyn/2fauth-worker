@@ -49,6 +49,39 @@ export class ExtService {
     }
 
     /**
+     * 确保 ext_tokens 表存在。
+     * worker.ts 的自愈迁移走 ctx.waitUntil（异步、且 D1 exec 对多语句有限制），
+     * 不能保证在首个请求前完成；这里同步兜底，缺表时直接建表。
+     */
+    private async ensureTable(): Promise<void> {
+        const probe = await this.db
+            .select({ id: extTokens.id })
+            .from(extTokens)
+            .limit(1)
+            .catch(() => null);
+
+        if (probe === null) {
+            // Drizzle 之上拿不到原始 D1；用 raw sql 模板建表（幂等）
+            const { sql } = await import('drizzle-orm');
+            await this.db.run(sql`
+                CREATE TABLE IF NOT EXISTS ext_tokens (
+                    id TEXT PRIMARY KEY,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    user_id TEXT NOT NULL,
+                    label TEXT,
+                    created_at INTEGER NOT NULL,
+                    last_used_at INTEGER,
+                    last_renewed_at INTEGER,
+                    expires_at INTEGER NOT NULL,
+                    revoked_at INTEGER
+                )
+            `);
+            await this.db.run(sql`CREATE INDEX IF NOT EXISTS idx_ext_tokens_hash ON ext_tokens(token_hash)`);
+            await this.db.run(sql`CREATE INDEX IF NOT EXISTS idx_ext_tokens_user ON ext_tokens(user_id)`);
+        }
+    }
+
+    /**
      * 签发设备令牌。明文只在此处返回一次，库中仅保留 SHA-256 摘要。
      */
     async issueToken(user: ExtTokenUser, label?: string): Promise<{
@@ -60,6 +93,8 @@ export class ExtService {
     }> {
         const userId = userIdOf(user);
         if (!userId) throw new AppError('missing_user', 401);
+
+        await this.ensureTable();
 
         // 先清理该用户已失效的记录，避免无限累积
         await this.pruneExpired(userId);
@@ -110,6 +145,8 @@ export class ExtService {
     } | null> {
         const token = String(plain || '').trim();
         if (!token.startsWith(TOKEN_PREFIX) || token.length < 20) return null;
+
+        await this.ensureTable();
 
         const tokenHash = await sha256Hex(token);
         const rows = await this.db
@@ -168,6 +205,8 @@ export class ExtService {
         const userId = userIdOf(user);
         if (!userId) throw new AppError('missing_user', 401);
 
+        await this.ensureTable();
+
         const rows: ExtToken[] = await this.db
             .select()
             .from(extTokens)
@@ -193,6 +232,8 @@ export class ExtService {
         const userId = userIdOf(user);
         if (!userId) throw new AppError('missing_user', 401);
         if (!id) throw new AppError('missing_token_id', 400);
+
+        await this.ensureTable();
 
         const rows = await this.db
             .select()
