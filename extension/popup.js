@@ -31,6 +31,8 @@ const TOKEN_KEY = 'fw_token';
 const TOKEN_META_KEY = 'fw_token_meta';
 const CACHE_KEY = 'fw_cache';
 const BINDINGS_KEY = 'fw_bindings';
+const LOCK_ENABLED_KEY = 'fw_lock_enabled';
+const UNLOCK_KEY = 'fw_unlock';
 
 const memorySession = {};
 
@@ -92,6 +94,9 @@ const sessionStore = {
 };
 
 const els = {
+  lockView: document.getElementById('lock-view'),
+  unlockBtn: document.getElementById('unlock-btn'),
+  lockDisableBtn: document.getElementById('lock-disable-btn'),
   bindConfirmView: document.getElementById('bind-confirm-view'),
   bindHostText: document.getElementById('bind-host-text'),
   bindConfirmBtn: document.getElementById('bind-confirm-btn'),
@@ -139,6 +144,8 @@ const state = {
   pendingBind: null,
   pendingHost: '',
   pendingToken: '',
+  lockEnabled: false,
+  unlocked: false,
   accounts: [],
   fetchedAt: 0,
   offsetMs: 0,
@@ -311,11 +318,87 @@ function formatTime(timestamp) {
 }
 
 /* ---------------------------------------------------------------------------
+ * 系统安全锁（WebAuthn 平台认证器）
+ * - 锁定时本弹窗不渲染任何账户/验证码，后台 fw:lookup 拒绝出码
+ * - 解锁在独立标签页 unlock.html 完成（系统弹窗会抢焦点，popup 承载不住）
+ * ------------------------------------------------------------------------- */
+
+async function readLockState() {
+  const enabled = await localStore.get([LOCK_ENABLED_KEY]);
+  state.lockEnabled = Boolean(enabled && enabled[LOCK_ENABLED_KEY]);
+
+  const unlocked = await sessionStore.get(UNLOCK_KEY);
+  state.unlocked = Boolean(unlocked && unlocked.at);
+}
+
+function showLockView() {
+  els.lockView.hidden = false;
+  els.bindConfirmView.hidden = true;
+  els.setupView.hidden = true;
+  els.accountsView.hidden = true;
+  stopTicker();
+  hideToast();
+}
+
+function hideLockView() {
+  els.lockView.hidden = true;
+}
+
+async function handleUnlockClick() {
+  // 打开解锁标签页后立刻关闭 popup：popup 失焦即自毁，保持打开没有意义
+  if (ext && ext.runtime && typeof ext.runtime.getURL === 'function') {
+    globalThis.open(ext.runtime.getURL('unlock.html'));
+    // popup 没有 tabs.remove 自身 API；直接关窗口
+    globalThis.close();
+  }
+}
+
+async function handleLockDisable() {
+  // 关锁前要求确认；不要求再过一次系统验证（能点到这里说明已解锁或未启用）
+  await localStore.set({ [LOCK_ENABLED_KEY]: false });
+  await localStore.remove(['fw_lock_cred']);
+  state.lockEnabled = false;
+  showToast('已关闭安全锁');
+  await init();
+}
+
+async function maybeAutoEnrollLock() {
+  // 默认开启策略：平台认证器可用且尚未注册 → 打开注册标签页（一次性）
+  if (state.lockEnabled) return;
+  if (typeof PublicKeyCredential === 'undefined' ||
+      typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function') {
+    return;
+  }
+
+  let available = false;
+  try {
+    available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch {
+    available = false;
+  }
+  if (!available) return;
+
+  const cred = await localStore.get(['fw_lock_cred']);
+  if (cred && cred.fw_lock_cred) return; // 已注册，等用户手动开启
+
+  const enrolled = await localStore.get(['fw_lock_enrolled']);
+  if (enrolled && enrolled.fw_lock_enrolled) return; // 提示过一次就不再打扰
+
+  await localStore.set({ fw_lock_enrolled: true });
+  // 注册本身要弹系统验证，放到独立标签页；注册成功由 unlock.js 写凭证
+  if (ext && ext.runtime && typeof ext.runtime.getURL === 'function') {
+    globalThis.open(ext.runtime.getURL('unlock.html?mode=enroll'));
+    globalThis.close();
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * 渲染
  * ------------------------------------------------------------------------- */
 
 function showBindConfirm(pending) {
   state.pendingBind = pending;
+  hideLockView();
   els.bindHostText.textContent = pending.host;
   els.bindConfirmView.hidden = false;
   els.setupView.hidden = true;
@@ -389,6 +472,7 @@ async function handleBindReject() {
 function showView(name) {
   const isSetup = name === 'setup';
   hideBindConfirm();
+  hideLockView();
   els.setupView.hidden = !isSetup;
   els.accountsView.hidden = isSetup;
 
@@ -830,6 +914,9 @@ async function maybeAutoRefresh() {
  * ------------------------------------------------------------------------- */
 
 function applyCache(cache) {
+  // 唯一渲染出口的兜底：锁定时即使被调用也不渲染
+  if (state.lockEnabled && !state.unlocked) return;
+
   state.accounts = (cache.accounts || []).filter((account) => account && account.id != null);
   state.fetchedAt = cache.fetchedAt || Date.now();
 
@@ -869,6 +956,8 @@ function handleFetchError(error) {
 
 async function refreshAll(options = {}) {
   if (!state.host || state.refreshing) return;
+  // 锁定时绝不发起取码/渲染
+  if (state.lockEnabled && !state.unlocked) return;
 
   const initial = Boolean(options.initial);
   const silent = Boolean(options.silent);
@@ -1223,6 +1312,9 @@ async function copyAccountCode(id, row) {
  * ------------------------------------------------------------------------- */
 
 function bindEvents() {
+  els.unlockBtn.addEventListener('click', handleUnlockClick);
+  els.lockDisableBtn.addEventListener('click', handleLockDisable);
+
   els.bindConfirmBtn.addEventListener('click', handleBindConfirm);
   els.bindRejectBtn.addEventListener('click', handleBindReject);
 
@@ -1345,6 +1437,14 @@ async function init() {
     showView('setup');
     return;
   }
+
+  // 安全锁门控：启用且未解锁时只显示锁视图，不加载/渲染任何账户数据
+  await readLockState();
+  if (state.lockEnabled && !state.unlocked) {
+    showLockView();
+    return;
+  }
+  hideLockView();
 
   state.host = host;
   state.token = stored[TOKEN_KEY] || '';

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "2FAuth Worker 验证码",
   "short_name": "2FAuth Worker",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "使用 2fauth-worker 的设备令牌或登录会话，在工具栏和 OTP 输入框旁快速查看、填入 TOTP 验证码。",
   "minimum_chrome_version": "121",
   "permissions": [

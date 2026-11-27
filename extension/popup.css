@@ -242,6 +242,59 @@ textarea:focus {
   user-select: all;
 }
 
+.lock {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 40px 20px 24px;
+  align-items: stretch;
+}
+
+.lock-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.lock-glyph {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.lock-hero h1 {
+  font-size: 15.5px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.lock-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+#unlock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.lock-foot {
+  display: flex;
+  justify-content: center;
+}
+
 input[type="url"],
 input[type="password"],
 input[type="text"],

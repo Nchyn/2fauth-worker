@@ -19,6 +19,8 @@ const TOKEN_META_KEY = 'fw_token_meta';
 const PENDING_BIND_KEY = 'fw_pending_bind';
 const BINDINGS_KEY = 'fw_bindings';
 const CACHE_KEY = 'fw_cache';
+const LOCK_ENABLED_KEY = 'fw_lock_enabled';
+const UNLOCK_KEY = 'fw_unlock';
 const ERROR_THROTTLE = 5000;
 const CACHE_MAX_AGE = 5 * 60 * 1000;
 
@@ -133,10 +135,32 @@ function hostnameOf(url) {
   }
 }
 
+/**
+ * 安全锁状态：启用且本会话未解锁 → 视为锁定。
+ * session 存储浏览器重启自动清空，天然实现"重启后回锁"。
+ */
+async function isLocked() {
+  try {
+    const stored = await api.storage.local.get(LOCK_ENABLED_KEY);
+    if (!stored || !stored[LOCK_ENABLED_KEY]) return false;
+
+    const unlocked = await api.storage.session.get(UNLOCK_KEY);
+    return !(unlocked && unlocked[UNLOCK_KEY] && unlocked[UNLOCK_KEY].at);
+  } catch {
+    // 存储异常时按未锁定处理，避免把用户永久锁死
+    return false;
+  }
+}
+
 async function handleLookup(message, sender) {
   const sourceUrl = (sender.tab && sender.tab.url) || sender.url || '';
   const hostname = hostnameOf(sourceUrl);
   if (!hostname) return { ok: false, error: 'no_host' };
+
+  // 安全锁优先于一切：锁定时不读配置、不取码
+  if (await isLocked()) {
+    return { ok: false, error: 'locked' };
+  }
 
   const config = await readConfig();
   if (!config.host) {
@@ -398,6 +422,41 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleRejectBind()
       .then(sendResponse)
       .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
+  if (message.type === 'fw:get-lock-state') {
+    (async () => {
+      try {
+        const stored = await api.storage.local.get([LOCK_ENABLED_KEY, 'fw_lock_cred']);
+        const locked = await isLocked();
+        return {
+          ok: true,
+          enabled: Boolean(stored && stored[LOCK_ENABLED_KEY]),
+          enrolled: Boolean(stored && stored.fw_lock_cred),
+          locked,
+        };
+      } catch {
+        return { ok: false };
+      }
+    })().then(sendResponse);
+    return true;
+  }
+
+  if (message.type === 'fw:set-lock') {
+    (async () => {
+      try {
+        if (message.enabled) {
+          await api.storage.local.set({ [LOCK_ENABLED_KEY]: true });
+        } else {
+          await api.storage.local.set({ [LOCK_ENABLED_KEY]: false });
+          await api.storage.local.remove('fw_lock_cred');
+        }
+        return { ok: true };
+      } catch {
+        return { ok: false };
+      }
+    })().then(sendResponse);
     return true;
   }
 

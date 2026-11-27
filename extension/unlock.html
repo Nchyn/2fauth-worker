@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>安全锁 - 2FAuth Worker</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    body {
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+
+    .unlock-card {
+      width: 380px;
+      max-width: calc(100vw - 40px);
+      padding: 34px 30px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .lock-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--accent-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .lock-icon svg {
+      width: 26px;
+      height: 26px;
+      color: var(--accent);
+    }
+
+    .unlock-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+
+    .unlock-desc {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 0 20px;
+    }
+
+    .unlock-status {
+      min-height: 18px;
+      font-size: 12px;
+      margin-top: 16px;
+      color: var(--muted);
+    }
+
+    .unlock-status.is-error { color: var(--danger); }
+    .unlock-status.is-ok { color: var(--ok); }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      vertical-align: -2px;
+      margin-right: 6px;
+      border: 2px solid var(--accent-soft);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: fwspin 0.8s linear infinite;
+    }
+
+    @keyframes fwspin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <main class="unlock-card">
+    <div class="lock-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="11" rx="2"/>
+        <path d="M8 10V7a4 4 0 1 1 8 0v3"/>
+      </svg>
+    </div>
+
+    <h1 id="title" class="unlock-title">验证身份</h1>
+    <p id="desc" class="unlock-desc">
+      正在等待系统验证（Windows Hello / Touch ID）…<br>
+      请完成验证以解锁验证码。
+    </p>
+
+    <button id="action-btn" type="button" class="primary full" hidden>重试</button>
+
+    <p id="status" class="unlock-status"></p>
+  </main>
+
+  <script src="unlock.js" defer></script>
+</body>
+</html>

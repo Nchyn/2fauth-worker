@@ -9,6 +9,34 @@
 <body>
   <div id="app">
 
+    <!-- 系统安全锁：验证通过前不显示任何验证码 -->
+    <section id="lock-view" class="view lock" hidden>
+      <div class="lock-hero">
+        <div class="lock-glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="10" width="16" height="11" rx="2"/>
+            <path d="M8 10V7a4 4 0 1 1 8 0v3"/>
+          </svg>
+        </div>
+        <h1>扩展已锁定</h1>
+        <p class="lock-sub">需要通过 Windows Hello / Touch ID 验证后才能查看验证码</p>
+      </div>
+
+      <button id="unlock-btn" type="button" class="primary full">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 11V7a4 4 0 1 1 8 0"/>
+          <rect x="4" y="11" width="16" height="10" rx="2"/>
+        </svg>
+        <span>使用系统验证解锁</span>
+      </button>
+
+      <div class="lock-foot">
+        <button id="lock-disable-btn" type="button" class="link danger">关闭安全锁</button>
+      </div>
+    </section>
+
     <!-- 首次绑定确认：站点页面发来的令牌，需用户在此确认域名后才生效 -->
     <section id="bind-confirm-view" class="view bind-confirm" hidden>
       <div class="brand">
@@ -131,7 +159,7 @@
 
       <div id="site-hint" class="site-hint" hidden></div>
 
-      <div id="list-loading" class="loading">
+      <div id="list-loading" class="loading" hidden>
         <span class="spinner"></span>
         <span>正在通过站点读取验证码…</span>
       </div>

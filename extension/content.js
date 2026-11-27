@@ -522,6 +522,9 @@
       message = '尚未配置 2FAuth 站点，请点击工具栏的扩展图标完成设置。';
     } else if (code === 'pending_bind') {
       message = '扩展有待确认的站点授权，请点击工具栏图标完成确认。';
+    } else if (code === 'locked') {
+      // 不带操作按钮：任何页面都可能触发本面板，避免钓鱼页面借「验证」诱导
+      message = '扩展已锁定，请点击工具栏图标完成系统验证后取码。';
     } else if (code === 'unauthorized' && mode === 'token') {
       message = '扩展授权已过期或被吊销，请到站点重新授权。';
       action = { label: '去站点授权', run: () => sendOpenSite(true) };
